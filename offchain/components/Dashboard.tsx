@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@nextui-org/button";
 
 import { ActionGroup } from "@/types/action";
@@ -5,7 +6,6 @@ import MintButton from "./actions/Mint";
 import DepositButton from "./actions/Deposit";
 import DelegateStakeButton from "./actions/DelegateStake";
 import RedelegateStakeButton from "./actions/RedelegateStake";
-import * as Script from "@/types/script";
 
 import {
   Address,
@@ -28,6 +28,8 @@ import {
   validatorToRewardAddress,
   validatorToScriptHash,
 } from "@lucid-evolution/lucid";
+import { network } from "@/config/lucid";
+import * as Script from "@/config/script";
 
 export default function Dashboard(props: {
   lucid: LucidEvolution;
@@ -36,6 +38,8 @@ export default function Dashboard(props: {
   onError: (error: any) => void;
 }) {
   const { lucid, address, setActionResult, onError } = props;
+
+  const [keyUnit, setKeyUnit] = useState<Record<string, string>>();
 
   async function submitTx(tx: TxSignBuilder) {
     const txSigned = await tx.sign.withWallet().complete();
@@ -67,14 +71,12 @@ export default function Dashboard(props: {
             .collectFrom([nonce])
             .mintAssets({ [`${policyID}${assetNameHex}`]: 1n }, redeemer)
             .attach.MintingPolicy(mintingValidator)
-            .complete();
+            .complete({ localUPLCEval: false });
 
           submitTx(tx)
             .then((txHash) => {
               setActionResult(txHash);
-
-              const key = JSON.stringify({ policyID, assetNameHex });
-              localStorage.setItem("KEY", key);
+              setKeyUnit({ policyID, assetNameHex });
             })
             .catch(onError);
         } catch (error) {
@@ -84,10 +86,9 @@ export default function Dashboard(props: {
 
       deposit: async (lovelace: Lovelace) => {
         try {
-          const key = localStorage.getItem("KEY");
-          if (!key) throw "No local storage key found, mint a key NFT first!";
+          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
 
-          const { policyID } = JSON.parse(key);
+          const { policyID } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
 
           const stakingValidator: Validator = { type: "PlutusV3", script };
@@ -95,9 +96,9 @@ export default function Dashboard(props: {
           const stakingCredential = scriptHashToCredential(stakingScriptHash);
 
           const spendingValidator: SpendingValidator = { type: "PlutusV3", script };
-          const validatorAddress = validatorToAddress(lucid.config().network, spendingValidator, stakingCredential);
+          const validatorAddress = validatorToAddress(network, spendingValidator, stakingCredential);
 
-          const tx = await lucid.newTx().pay.ToAddress(validatorAddress, { lovelace }).complete();
+          const tx = await lucid.newTx().pay.ToAddress(validatorAddress, { lovelace }).complete({ localUPLCEval: false });
 
           submitTx(tx).then(setActionResult).catch(onError);
         } catch (error) {
@@ -107,10 +108,9 @@ export default function Dashboard(props: {
 
       withdraw: async () => {
         try {
-          const key = localStorage.getItem("KEY");
-          if (!key) throw "No local storage key found, mint a key NFT first!";
+          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
 
-          const { policyID, assetNameHex } = JSON.parse(key);
+          const { policyID, assetNameHex } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
 
           const stakingValidator: Validator = { type: "PlutusV3", script };
@@ -118,10 +118,10 @@ export default function Dashboard(props: {
           const stakingCredential = scriptHashToCredential(stakingScriptHash);
 
           const spendingValidator: SpendingValidator = { type: "PlutusV3", script };
-          const validatorAddress = validatorToAddress(lucid.config().network, spendingValidator, stakingCredential);
+          const validatorAddress = validatorToAddress(network, spendingValidator, stakingCredential);
 
-          const keyUnit = toUnit(policyID, assetNameHex);
-          const [keyUTxO] = await lucid.utxosAtWithUnit(address, keyUnit);
+          const key = toUnit(policyID, assetNameHex);
+          const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
 
           const validatorUTXOs = await lucid.utxosAt(validatorAddress);
           const redeemer = Data.void();
@@ -130,7 +130,7 @@ export default function Dashboard(props: {
             .newTx()
             .collectFrom([keyUTxO, ...validatorUTXOs], redeemer)
             .attach.SpendingValidator(spendingValidator)
-            .complete();
+            .complete({ localUPLCEval: false });
 
           submitTx(tx).then(setActionResult).catch(onError);
         } catch (error) {
@@ -140,17 +140,16 @@ export default function Dashboard(props: {
 
       delegateStake: async ({ poolID, dRep }: { poolID: PoolId; dRep: DRep }) => {
         try {
-          const key = localStorage.getItem("KEY");
-          if (!key) throw "No local storage key found, mint a key NFT first!";
+          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
 
-          const { policyID, assetNameHex } = JSON.parse(key);
+          const { policyID, assetNameHex } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
 
           const stakingValidator: Validator = { type: "PlutusV3", script };
-          const stakingAddress = validatorToRewardAddress(lucid.config().network, stakingValidator);
+          const stakingAddress = validatorToRewardAddress(network, stakingValidator);
 
-          const keyUnit = toUnit(policyID, assetNameHex);
-          const [keyUTxO] = await lucid.utxosAtWithUnit(address, keyUnit);
+          const key = toUnit(policyID, assetNameHex);
+          const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
 
           const redeemer = Data.void();
 
@@ -159,7 +158,7 @@ export default function Dashboard(props: {
             .collectFrom([keyUTxO])
             .registerAndDelegate.ToPoolAndDRep(stakingAddress, poolID, dRep, redeemer)
             .attach.CertificateValidator(stakingValidator)
-            .complete();
+            .complete({ localUPLCEval: false });
 
           submitTx(tx).then(setActionResult).catch(onError);
         } catch (error) {
@@ -169,10 +168,25 @@ export default function Dashboard(props: {
 
       redelegateStake: async (poolID: PoolId) => {
         try {
+          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
+
+          const { policyID, assetNameHex } = keyUnit;
+          const script = applyParamsToScript(Script.DRY, [policyID]);
+
+          const stakingValidator: Validator = { type: "PlutusV3", script };
+          const stakingAddress = validatorToRewardAddress(network, stakingValidator);
+
+          const key = toUnit(policyID, assetNameHex);
+          const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
+
+          const redeemer = Data.void();
+
           const tx = await lucid
             .newTx()
-            // TODO: Define staking redelegation (switch from 1 pool to another)
-            .complete();
+            .collectFrom([keyUTxO])
+            .delegateTo(stakingAddress, poolID, redeemer)
+            .attach.CertificateValidator(stakingValidator)
+            .complete({ localUPLCEval: false });
 
           submitTx(tx).then(setActionResult).catch(onError);
         } catch (error) {
@@ -182,30 +196,33 @@ export default function Dashboard(props: {
 
       withdrawStake: async () => {
         try {
-          const key = localStorage.getItem("KEY");
-          if (!key) throw "No local storage key found, mint a key NFT first!";
+          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
 
-          const { policyID, assetNameHex } = JSON.parse(key);
+          const { policyID, assetNameHex } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
 
           const stakingValidator: Validator = { type: "PlutusV3", script };
-          const stakingAddress = validatorToRewardAddress(lucid.config().network, stakingValidator);
+          const stakingAddress = validatorToRewardAddress(network, stakingValidator);
 
-          const account = await fetch(`/accounts/${stakingAddress}`, { headers: { project_id: `${process.env.NEXT_PUBLIC_BF_PID}` } });
-          const { withdrawable_amount } = await account.json();
-          if (!withdrawable_amount || withdrawable_amount == 0n) throw "No stake reward yet!";
+          const accounts = await fetch("/koios/account_info?select=rewards_available", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ _stake_addresses: [stakingAddress] }),
+          });
+          const [{ rewards_available }] = await accounts.json();
+          if (!rewards_available || rewards_available == 0) throw "No stake rewards yet!";
 
-          const keyUnit = toUnit(policyID, assetNameHex);
-          const [keyUTxO] = await lucid.utxosAtWithUnit(address, keyUnit);
+          const key = toUnit(policyID, assetNameHex);
+          const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
 
           const redeemer = Data.void();
 
           const tx = await lucid
             .newTx()
             .collectFrom([keyUTxO])
-            .withdraw(stakingAddress, BigInt(withdrawable_amount), redeemer)
+            .withdraw(stakingAddress, BigInt(rewards_available), redeemer)
             .attach.WithdrawalValidator(stakingValidator)
-            .complete();
+            .complete({ localUPLCEval: false });
 
           submitTx(tx).then(setActionResult).catch(onError);
         } catch (error) {
@@ -215,17 +232,16 @@ export default function Dashboard(props: {
 
       unregisterStake: async () => {
         try {
-          const key = localStorage.getItem("KEY");
-          if (!key) throw "No local storage key found, mint a key NFT first!";
+          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
 
-          const { policyID, assetNameHex } = JSON.parse(key);
+          const { policyID, assetNameHex } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
 
           const stakingValidator: Validator = { type: "PlutusV3", script };
-          const stakingAddress = validatorToRewardAddress(lucid.config().network, stakingValidator);
+          const stakingAddress = validatorToRewardAddress(network, stakingValidator);
 
-          const keyUnit = toUnit(policyID, assetNameHex);
-          const [keyUTxO] = await lucid.utxosAtWithUnit(address, keyUnit);
+          const key = toUnit(policyID, assetNameHex);
+          const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
 
           const redeemer = Data.void();
 
@@ -234,7 +250,7 @@ export default function Dashboard(props: {
             .collectFrom([keyUTxO])
             .deRegisterStake(stakingAddress, redeemer)
             .attach.CertificateValidator(stakingValidator)
-            .complete();
+            .complete({ localUPLCEval: false });
 
           submitTx(tx).then(setActionResult).catch(onError);
         } catch (error) {
