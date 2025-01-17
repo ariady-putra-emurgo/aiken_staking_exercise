@@ -274,7 +274,7 @@ export default function Dashboard(props: {
 
         <DepositButton onSubmit={actions.DRY.deposit} />
 
-        <Button onClick={actions.DRY.withdraw} className="bg-gradient-to-tr from-primary-500 to-teal-500 text-white shadow-lg grow" radius="full">
+        <Button onPress={actions.DRY.withdraw} className="bg-gradient-to-tr from-primary-500 to-teal-500 text-white shadow-lg grow" radius="full">
           Withdraw from Spend
         </Button>
       </div>
@@ -286,11 +286,11 @@ export default function Dashboard(props: {
 
         <RedelegateStakeButton onSubmit={actions.DRY.redelegateStake} />
 
-        <Button onClick={actions.DRY.withdrawStake} className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow" radius="full">
+        <Button onPress={actions.DRY.withdrawStake} className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow" radius="full">
           Withdraw Stake Rewards
         </Button>
 
-        <Button onClick={actions.DRY.unregisterStake} className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow" radius="full">
+        <Button onPress={actions.DRY.unregisterStake} className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow" radius="full">
           Deregister Stake
         </Button>
       </div>

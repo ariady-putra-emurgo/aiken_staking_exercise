@@ -28,7 +28,7 @@ export default function RedelegateStakeButton(props: { onSubmit: Action }) {
               </ModalBody>
               <ModalFooter>
                 <Button
-                  onClick={() => onSubmit(poolID).then(onClose)}
+                  onPress={() => onSubmit(poolID).then(onClose)}
                   className="bg-gradient-to-tr from-pink-500 to-yellow-500 text-white shadow-lg"
                   radius="full"
                 >

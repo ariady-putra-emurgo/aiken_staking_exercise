@@ -82,7 +82,7 @@ export default function DelegateStakeButton(props: { onSubmit: Action }) {
               <ModalFooter>
                 <div className="relative">
                   <Button
-                    onClick={() => onSubmit({ poolID, dRep }).then(onClose)}
+                    onPress={() => onSubmit({ poolID, dRep }).then(onClose)}
                     isDisabled={isDRepCredential(dRep) && !dRepCredentialHash}
                     className={`bg-gradient-to-tr from-pink-500 to-yellow-500 text-white shadow-lg
                       ${isDRepCredential(dRep) && dRepID && !dRepCredentialHash && "invisible"}`}
