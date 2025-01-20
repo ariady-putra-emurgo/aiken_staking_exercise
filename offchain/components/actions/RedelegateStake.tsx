@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { Button } from "@nextui-org/button";
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, useDisclosure } from "@nextui-org/modal";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  useDisclosure,
+} from "@nextui-org/modal";
+import { Input } from "@nextui-org/input";
 
 import { Action } from "@/types/action";
-import { Input } from "@nextui-org/input";
 
 export default function RedelegateStakeButton(props: { onSubmit: Action }) {
   const { onSubmit } = props;
@@ -14,23 +21,34 @@ export default function RedelegateStakeButton(props: { onSubmit: Action }) {
 
   return (
     <>
-      <Button onPress={onOpen} className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow" radius="full">
+      <Button
+        className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow"
+        radius="full"
+        onPress={onOpen}
+      >
         Redelegate Stake
       </Button>
 
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} placement="top-center">
+      <Modal isOpen={isOpen} placement="top-center" onOpenChange={onOpenChange}>
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">Redelegate Stake</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1">
+                Redelegate Stake
+              </ModalHeader>
               <ModalBody>
-                <Input label="Pool ID" placeholder="Enter Pool ID" variant="bordered" onValueChange={setPoolID} />
+                <Input
+                  label="Pool ID"
+                  placeholder="Enter Pool ID"
+                  variant="bordered"
+                  onValueChange={setPoolID}
+                />
               </ModalBody>
               <ModalFooter>
                 <Button
-                  onPress={() => onSubmit(poolID).then(onClose)}
                   className="bg-gradient-to-tr from-pink-500 to-yellow-500 text-white shadow-lg"
                   radius="full"
+                  onPress={() => onSubmit(poolID).then(onClose)}
                 >
                   Submit
                 </Button>

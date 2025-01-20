@@ -1,12 +1,5 @@
 import { useState } from "react";
 import { Button } from "@nextui-org/button";
-
-import { ActionGroup } from "@/types/action";
-import MintButton from "./actions/Mint";
-import DepositButton from "./actions/Deposit";
-import DelegateStakeButton from "./actions/DelegateStake";
-import RedelegateStakeButton from "./actions/RedelegateStake";
-
 import {
   Address,
   applyParamsToScript,
@@ -28,6 +21,13 @@ import {
   validatorToRewardAddress,
   validatorToScriptHash,
 } from "@lucid-evolution/lucid";
+
+import MintButton from "./actions/Mint";
+import DepositButton from "./actions/Deposit";
+import DelegateStakeButton from "./actions/DelegateStake";
+import RedelegateStakeButton from "./actions/RedelegateStake";
+
+import { ActionGroup } from "@/types/action";
 import { network } from "@/config/lucid";
 import * as Script from "@/config/script";
 
@@ -53,10 +53,14 @@ export default function Dashboard(props: {
       mint: async (assetName: string) => {
         try {
           const utxos = await lucid.wallet().getUtxos();
+
           if (!utxos) throw "Empty Wallet";
 
           const nonce = utxos[0];
-          const oRef = new Constr(0, [String(nonce.txHash), BigInt(nonce.outputIndex)]);
+          const oRef = new Constr(0, [
+            String(nonce.txHash),
+            BigInt(nonce.outputIndex),
+          ]);
 
           const script = applyParamsToScript(Script.KEY, [oRef]);
           const mintingValidator: MintingPolicy = { type: "PlutusV3", script };
@@ -86,7 +90,8 @@ export default function Dashboard(props: {
 
       deposit: async (lovelace: Lovelace) => {
         try {
-          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
+          if (!keyUnit)
+            throw "No key data in the current session. Mint a key NFT first!";
 
           const { policyID } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
@@ -95,10 +100,20 @@ export default function Dashboard(props: {
           const stakingScriptHash = validatorToScriptHash(stakingValidator);
           const stakingCredential = scriptHashToCredential(stakingScriptHash);
 
-          const spendingValidator: SpendingValidator = { type: "PlutusV3", script };
-          const validatorAddress = validatorToAddress(network, spendingValidator, stakingCredential);
+          const spendingValidator: SpendingValidator = {
+            type: "PlutusV3",
+            script,
+          };
+          const validatorAddress = validatorToAddress(
+            network,
+            spendingValidator,
+            stakingCredential,
+          );
 
-          const tx = await lucid.newTx().pay.ToAddress(validatorAddress, { lovelace }).complete({ localUPLCEval: false });
+          const tx = await lucid
+            .newTx()
+            .pay.ToAddress(validatorAddress, { lovelace })
+            .complete({ localUPLCEval: false });
 
           submitTx(tx).then(setActionResult).catch(onError);
         } catch (error) {
@@ -108,7 +123,8 @@ export default function Dashboard(props: {
 
       withdraw: async () => {
         try {
-          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
+          if (!keyUnit)
+            throw "No key data in the current session. Mint a key NFT first!";
 
           const { policyID, assetNameHex } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
@@ -117,8 +133,15 @@ export default function Dashboard(props: {
           const stakingScriptHash = validatorToScriptHash(stakingValidator);
           const stakingCredential = scriptHashToCredential(stakingScriptHash);
 
-          const spendingValidator: SpendingValidator = { type: "PlutusV3", script };
-          const validatorAddress = validatorToAddress(network, spendingValidator, stakingCredential);
+          const spendingValidator: SpendingValidator = {
+            type: "PlutusV3",
+            script,
+          };
+          const validatorAddress = validatorToAddress(
+            network,
+            spendingValidator,
+            stakingCredential,
+          );
 
           const key = toUnit(policyID, assetNameHex);
           const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
@@ -138,15 +161,25 @@ export default function Dashboard(props: {
         }
       },
 
-      delegateStake: async ({ poolID, dRep }: { poolID: PoolId; dRep: DRep }) => {
+      delegateStake: async ({
+        poolID,
+        dRep,
+      }: {
+        poolID: PoolId;
+        dRep: DRep;
+      }) => {
         try {
-          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
+          if (!keyUnit)
+            throw "No key data in the current session. Mint a key NFT first!";
 
           const { policyID, assetNameHex } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
 
           const stakingValidator: Validator = { type: "PlutusV3", script };
-          const stakingAddress = validatorToRewardAddress(network, stakingValidator);
+          const stakingAddress = validatorToRewardAddress(
+            network,
+            stakingValidator,
+          );
 
           const key = toUnit(policyID, assetNameHex);
           const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
@@ -156,7 +189,12 @@ export default function Dashboard(props: {
           const tx = await lucid
             .newTx()
             .collectFrom([keyUTxO])
-            .registerAndDelegate.ToPoolAndDRep(stakingAddress, poolID, dRep, redeemer)
+            .registerAndDelegate.ToPoolAndDRep(
+              stakingAddress,
+              poolID,
+              dRep,
+              redeemer,
+            )
             .attach.CertificateValidator(stakingValidator)
             .complete({ localUPLCEval: false });
 
@@ -168,13 +206,17 @@ export default function Dashboard(props: {
 
       redelegateStake: async (poolID: PoolId) => {
         try {
-          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
+          if (!keyUnit)
+            throw "No key data in the current session. Mint a key NFT first!";
 
           const { policyID, assetNameHex } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
 
           const stakingValidator: Validator = { type: "PlutusV3", script };
-          const stakingAddress = validatorToRewardAddress(network, stakingValidator);
+          const stakingAddress = validatorToRewardAddress(
+            network,
+            stakingValidator,
+          );
 
           const key = toUnit(policyID, assetNameHex);
           const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
@@ -196,21 +238,30 @@ export default function Dashboard(props: {
 
       withdrawStake: async () => {
         try {
-          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
+          if (!keyUnit)
+            throw "No key data in the current session. Mint a key NFT first!";
 
           const { policyID, assetNameHex } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
 
           const stakingValidator: Validator = { type: "PlutusV3", script };
-          const stakingAddress = validatorToRewardAddress(network, stakingValidator);
+          const stakingAddress = validatorToRewardAddress(
+            network,
+            stakingValidator,
+          );
 
-          const accounts = await fetch("/koios/account_info?select=rewards_available", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ _stake_addresses: [stakingAddress] }),
-          });
+          const accounts = await fetch(
+            "/koios/account_info?select=rewards_available",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ _stake_addresses: [stakingAddress] }),
+            },
+          );
           const [{ rewards_available }] = await accounts.json();
-          if (!rewards_available || rewards_available == 0) throw "No stake rewards yet!";
+
+          if (!rewards_available || rewards_available == 0)
+            throw "No stake rewards yet!";
 
           const key = toUnit(policyID, assetNameHex);
           const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
@@ -232,13 +283,17 @@ export default function Dashboard(props: {
 
       unregisterStake: async () => {
         try {
-          if (!keyUnit) throw "No key data in the current session. Mint a key NFT first!";
+          if (!keyUnit)
+            throw "No key data in the current session. Mint a key NFT first!";
 
           const { policyID, assetNameHex } = keyUnit;
           const script = applyParamsToScript(Script.DRY, [policyID]);
 
           const stakingValidator: Validator = { type: "PlutusV3", script };
-          const stakingAddress = validatorToRewardAddress(network, stakingValidator);
+          const stakingAddress = validatorToRewardAddress(
+            network,
+            stakingValidator,
+          );
 
           const key = toUnit(policyID, assetNameHex);
           const [keyUTxO] = await lucid.utxosAtWithUnit(address, key);
@@ -274,7 +329,11 @@ export default function Dashboard(props: {
 
         <DepositButton onSubmit={actions.DRY.deposit} />
 
-        <Button onPress={actions.DRY.withdraw} className="bg-gradient-to-tr from-primary-500 to-teal-500 text-white shadow-lg grow" radius="full">
+        <Button
+          className="bg-gradient-to-tr from-primary-500 to-teal-500 text-white shadow-lg grow"
+          radius="full"
+          onPress={actions.DRY.withdraw}
+        >
           Withdraw from Spend
         </Button>
       </div>
@@ -286,11 +345,19 @@ export default function Dashboard(props: {
 
         <RedelegateStakeButton onSubmit={actions.DRY.redelegateStake} />
 
-        <Button onPress={actions.DRY.withdrawStake} className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow" radius="full">
+        <Button
+          className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow"
+          radius="full"
+          onPress={actions.DRY.withdrawStake}
+        >
           Withdraw Stake Rewards
         </Button>
 
-        <Button onPress={actions.DRY.unregisterStake} className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow" radius="full">
+        <Button
+          className="bg-gradient-to-tr from-slate-500 to-emerald-500 text-white shadow-lg grow"
+          radius="full"
+          onPress={actions.DRY.unregisterStake}
+        >
           Deregister Stake
         </Button>
       </div>
